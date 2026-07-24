@@ -1,5 +1,7 @@
 # Triple Threat
 
+![Triple Threat](docs/images/TT-AI_IT.png)
+
 Status: active
 Created: 2026-07-12
 Owner: Felton
