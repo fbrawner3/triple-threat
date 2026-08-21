@@ -1,5 +1,5 @@
 # Triple Threat
-![Triple_Threat](docs/images/TT-Logo.jpg)
+![Triple_Threat](docs/images/TT-Logo.png)
 ![Triple Threat](docs/images/TT-AI_IT.png)
 
 Status: active
