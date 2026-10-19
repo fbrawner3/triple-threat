@@ -8,13 +8,8 @@
 // validation-warnings loop where Felton resolves items via HTTP routes
 // (routes.ts) while the workflow just waits on the corresponding gate.
 //
-// NOT included in this pass: Trilium Phase Tracker projection. The existing
-// trilium-projector.ts only supports a single create-once note, not the
-// per-round create-then-repeatedly-update a tracker note that Triple-Threat
-// needs — building that properly is separate scope, not a copy-paste of the
-// ansible pattern. Until it exists, round/stage/blocker/warning state is
-// visible via the /tt-workflows/* routes and DBOS Conductor/Console, not
-// Trilium. See the Review Handoff note for follow-up.
+// Round/stage/blocker/warning state is visible via the /tt-workflows/* routes
+// and the DBOS console.
 import { DBOS } from "@dbos-inc/dbos-sdk";
 import type { AgentRunnerConfig } from "../agentRunnerClient.js";
 import { getAgentJobArtifact, getAgentJobStatus, submitAgentJob } from "../agentRunnerClient.js";
@@ -337,8 +332,8 @@ export class TripleThreatWorkflows {
 
   // Turn the adjudication stage's free-text blocker manifest into tt_blockers
   // rows so the Arena / approvals blocker workshop actually has something to
-  // render. Without this the manifest only ever lands in Trilium + the stage
-  // job's stored content, and the workshop stays empty until someone POSTs
+  // render. Without this the manifest only ever lands in the filed artifact +
+  // the stage job's stored content, and the workshop stays empty until someone POSTs
   // rows by hand (the state this replaced).
   //
   // @DBOS.step() so the parse + writes memoize across replay. upsertTtBlocker
@@ -371,8 +366,7 @@ export class TripleThreatWorkflows {
   }
 
   // No code-side note-filing relay: the specialist itself files its own
-  // stage output directly via mcp__geekygramps__write_memory (vector memory,
-  // since 2026-09-21 -- previously Trilium, removed 2026-08-26) -- see
+  // stage output directly via mcp__geekygramps__write_memory (vector memory) -- see
   // agent-runner-service's --allowedTools and tripleThreatPrompts.ts's
   // vectorMemoryInstruction()/runbookVectorMemoryInstruction(). The workflow
   // never creates notes itself.

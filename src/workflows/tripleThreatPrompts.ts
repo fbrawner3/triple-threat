@@ -53,14 +53,12 @@ ${warnings}
 `;
 }
 
-// Replaces the old triliumInstruction() (removed 2026-09-21, Felton's call:
-// TT moves off the Trilium exception onto vector memory like everything else
-// in migrated scope). The agent has mcp__geekygramps__write_memory available
-// (see agent-runner-service's --allowedTools) and gets a fully-formed
-// note_id/project/doc_type from us instead of having to search-and-guess a
-// Trilium note tree -- write_memory upserts on note_id, so a replay or a
-// deliberate re-run of the same stage/round just updates the existing note
-// instead of creating a duplicate.
+// Each specialist files its own stage output to vector memory. The agent has
+// mcp__geekygramps__write_memory available (see agent-runner-service's
+// --allowedTools) and gets a fully-formed note_id/project/doc_type from us
+// instead of having to guess them -- write_memory upserts on note_id, so a
+// replay or a deliberate re-run of the same stage/round just updates the
+// existing note instead of creating a duplicate.
 function vectorMemoryInstruction(ctx: StageContext, stage: TtStage, noteTitle: string, docType: string, subfolder?: string): string {
   const noteId = `tt-${ctx.projectSlug}-r${ctx.round}-${stage}`;
   const ancestry = subfolder
