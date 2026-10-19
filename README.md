@@ -1,4 +1,5 @@
 # Triple Threat
+![Triple_Threat](docs/images/TT-logo.jpg)
 
 Status: active
 Created: 2026-07-12
