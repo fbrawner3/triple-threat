@@ -45,6 +45,10 @@ Stage 8 returns a verdict, which the workflow classifies and records before the 
 
 Every stage prompt forbids deploying, installing, applying, committing, or pushing, and by default forbids editing outside the project directory. A completed run hands over files and an installation guide for a separate, explicitly authorized rollout. Nothing deploys automatically.
 
+## Knowledge and memory
+
+Shared [vector memory](https://github.com/fbrawner3/vector-memory) is the source of truth for agent knowledge: PostgreSQL with hybrid retrieval (dense vector search plus full-text search, fused and reranked), reached through the MCP `search_memory` and `write_memory` tools. The Trilium note store it replaced is no longer the system of record. Each stage files its artifact there under a `tt_*` document type, and the installation guide from stage 7 is filed on its own as a runbook.
+
 ## HTTP API
 
 | Method | Route | Purpose |
