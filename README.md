@@ -1,7 +1,5 @@
 # Triple Threat
 
-![Triple Threat](docs/images/TT-AI_IT.png)
-
 Status: active
 Created: 2026-07-12
 Owner: Felton
@@ -9,27 +7,78 @@ Builder: Codex / Claude / Antigravity (multi-agent orchestration)
 
 ## Purpose
 
-An AI-assisted development workflow that sequences three coding agents (Claude, Codex, and an "agy" agent) through an eight-stage pipeline — planning, architecture, build, review, adjudication, decision register, implementation, and validation — stopping at defined approval gates instead of running unattended end-to-end.
+An AI-assisted development workflow that sequences three coding agents (Claude, Codex, and Antigravity) through an eight-stage pipeline, stopping at five human approval gates instead of running unattended end to end.
 
-The orchestrator resolves a project name to a working directory and a slug, then drives each stage through the appropriate agent via a Windows PowerShell runner, recording state so a run can be resumed at a specific gate rather than restarted from scratch.
+It runs as a [DBOS](https://docs.dbos.dev/) durable workflow inside [`geekygramps-mcp`](https://github.com/fbrawner3/geekygramps-mcp) and invokes the agents through the shared agent-runner service. Rounds are launched, approved, and monitored from [The Arena](https://github.com/fbrawner3/the-arena). Every gate waits on a durable signal, so a crash or restart resumes the run where it stopped instead of starting over. An unanswered gate times out after seven days and cancels the run.
+
+Triple Threat is separate from [Gauntlet](https://github.com/fbrawner3/gauntlet), the adversarial review workflow that can pressure-test its material.
+
+## Pipeline
+
+| # | Stage | Agent | Access |
+| :-: | --- | --- | --- |
+| 1 | Project design | Claude | writes artifact |
+| 2 | Architecture | Claude | writes artifact |
+| | **Gate: `post-architecture`** | | |
+| 3 | Implementation review | Codex | review only |
+| 4 | Architecture review | Antigravity | read-only |
+| 5 | Adjudication and blocker manifest | Claude | writes artifact |
+| | **Gate: `finalize-adjudication`** (blocker workshop) | | |
+| 6 | Decision register | Claude | writes artifact |
+| | **Gate: `post-decision-register`** | | |
+| 7 | Implementation package and installation guide | Codex | writes project files |
+| | **Gate: `post-implementation`** | | |
+| 8 | Validation | Claude | read-only |
+| | **Gate: `finalize-validated-runbook`** (warnings loop) | | |
+
+Stages 3 and 4 run in parallel.
+
+### Blocker workshop
+
+Adjudication appends a machine-readable list of blockers, each with a stable ID, the question it raises, why it blocks, and a recommendation. The workflow seeds those into a workshop. The operator records a decision and evidence for each blocker and verifies it. The decision register stage only includes what was decided and verified, and it declines to produce a register if the manifest is not finalized.
+
+### Validation warnings and remediation
+
+Stage 8 returns a verdict, which the workflow classifies and records before the final gate. Validation warnings are worked at that gate in a loop that mirrors the blocker workshop. The final gate can also trigger a remediation pass: one more implementation and validation run with the validation failures as context. A pass is a deliberate human click, nothing repeats on its own, and a workflow is capped at three passes.
+
+### Safety boundary
+
+Every stage prompt forbids deploying, installing, applying, committing, or pushing, and by default forbids editing outside the project directory. A completed run hands over files and an installation guide for a separate, explicitly authorized rollout. Nothing deploys automatically.
+
+## HTTP API
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/tt-workflows` | Start a round |
+| `GET` | `/tt-workflows/:workflowId` | Read run state |
+| `GET` | `/tt-workflows/:workflowId/events` | Read the event log |
+| `GET` | `/tt-workflows/:workflowId/artifacts` | Read stage artifacts |
+| `GET` | `/tt-workflows-pending` | List runs waiting on a gate |
+| `POST` | `/tt-workflows/:workflowId/approve/:gate` | Approve a gate |
+| `POST` | `/tt-workflows/:workflowId/remediate` | Run one remediation pass |
+| `GET`/`POST` | `/tt-workflows/:workflowId/blockers` | List or create blockers |
+| `POST` | `/tt-workflows/:workflowId/blockers/:blockerId/decision` | Record a decision |
+| `POST` | `/tt-workflows/:workflowId/blockers/:blockerId/verify` | Verify a blocker |
+| `GET`/`POST` | `/tt-workflows/:workflowId/warnings` | List or create validation warnings |
+| `POST` | `/tt-workflows/:workflowId/warnings/:warningId/resolution` | Record a resolution |
+| `POST` | `/tt-workflows/:workflowId/warnings/:warningId/verify` | Verify a warning |
 
 ## Structure
 
 ```
-orchestrator/       Stage sequencing runner (run.ps1) and stage-set migrations
-plugins/            Plugin definition wired into the host agent runtime
-runtime-skill/       Skill definition consumed by the agent runtime at execution time
-tests/              Isolated/fake-agent test harnesses for the cutover, desktop-shortcut, and e2e paths
-activate.ps1        Installs the orchestrator + plugin into a local agent runtime install
-enable-desktop.ps1  Adds a desktop-launchable shortcut for the orchestrator
+src/workflows/tripleThreat.ts          DBOS workflow: stages, gates, blocker and warning loops
+src/workflows/tripleThreatPrompts.ts   Stage definitions, agent assignment, and prompt templates
+src/ttRoutes.ts                        HTTP routes
 ```
 
 ## Stack
 
-- PowerShell (orchestration, stage runner, install/activation scripts)
-- Python (plugin runtime hook)
-- Three independent AI coding agents as pipeline stage executors
+- TypeScript, Fastify, DBOS (durable workflows)
+- PostgreSQL (workflow, stage-job, blocker, and warning state)
+- Three independent AI coding agents as stage executors, invoked through the agent-runner service
 
 ## Notes
 
-This is a personal workflow tool, published for portfolio purposes. The scripts were extracted from a larger private monorepo where they lived under a nested `hermes/` directory tree — path references inside `activate.ps1`, `enable-desktop.ps1`, and the orchestrator scripts still assume that original nested layout and have **not** been rewritten for this flattened, standalone structure. Treat this as a reference implementation of the orchestration design, not a drop-in installable tool.
+This is a personal homelab tool, published for portfolio purposes. It is a reference implementation extracted from a larger private service. The modules it imports (service configuration, the DBOS store and types, the agent-runner client, the approvals page) are not included, so it will not build on its own.
+
+An earlier version of this project was a PowerShell orchestrator. It has been replaced by the DBOS workflow above and is no longer in this repository.
